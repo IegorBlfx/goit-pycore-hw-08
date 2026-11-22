@@ -1,4 +1,9 @@
+import os
+import pickle
+
 from classes import AddressBook, Record
+
+DATA_FILE = "addressbook.pkl"
 
 
 def input_error(func): # Decorator to handle input errors
@@ -89,14 +94,33 @@ def birthdays(args, book): # Function to show contacts with birthdays in the nex
     return "\n".join(f"{u['name']}: {u['congratulation_date']}" for u in upcoming)
 
 
+def save_data(book, filename=DATA_FILE): # Serialize the address book to disk
+    with open(filename, "wb") as f:
+        pickle.dump(book, f)
+
+
+def load_data(filename=DATA_FILE): # Deserialize the address book from disk
+    try:
+        with open(filename, "rb") as f:
+            return pickle.load(f)
+    except FileNotFoundError:
+        return AddressBook()  # File does not exist yet: start with an empty book
+    except Exception:  # Corrupted data can raise many different errors from pickle
+        backup = filename + ".bak"
+        os.replace(filename, backup)  # Keep the unreadable file so the next save does not overwrite it
+        print(f"Could not read saved data. It was kept as {backup}. Starting with an empty address book.")
+        return AddressBook()
+
+
 def main():
-    book = AddressBook() #  Create an instance of AddressBook to store contacts
+    book = load_data() #  Restore the address book from disk (or create a new one)
     print("Welcome to the assistant bot!")
     while True:
         user_input = input("Enter a command: ")
         command, *args = parse_input(user_input)
 
         if command in ["close", "exit"]:
+            save_data(book)  # Save the address book before exiting
             print("Good bye!")
             break
         elif command == "hello":
